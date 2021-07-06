@@ -7,6 +7,7 @@
 //各種パラメータ(Webページ死活監視)
 const CRON_INTERVAL_MINUTE = 10; //cronによる定期実行の間隔(分)
 const aliveMonitoredURL = [ //死活監視対象URLのリスト
+    "https://www.google.co.jp/webhp",
     "https://kusuri-miru.com/",
 ];
 const MAX_REQUEST_TRY_TIME = 3; //1回の死活監視における最大試行回数
@@ -37,8 +38,8 @@ const cron = require('node-cron');
 const request = require('request');
 
 // cronによる自動実行
-//cron.schedule('*/' + CRON_INTERVAL_MINUTE + ' * * * *', aliveMonitoringHandler());
-cron.schedule('*/' + CRON_INTERVAL_MINUTE + ' * * * * * ', aliveMonitoringHandler());
+cron.schedule('*/' + CRON_INTERVAL_MINUTE + ' * * * *', aliveMonitoringHandler());
+//cron.schedule('* * * * * *', aliveMonitoringHandler()); //毎秒実行
 
 
 
@@ -70,10 +71,15 @@ function webPageAliveMonitoring(url) {
     let isAlive = false;
     let HTTPResCode = 0;
 
+    const options = {
+        url: url,
+        timeout: 30 * 1000, // 単位(秒)
+    }
+
     //最大「MAX_REQUEST_TRY_TIME」回試行
     for (let i = 0; i < MAX_REQUEST_TRY_TIME; i++) {
         //URLにGETリクエスト送信
-        request(url, (error, response, body) => {
+        request.get(options, function (error, response, body) {
             // レスポンスコードとHTMLを表示
             generateLog('url:', url);
             generateLog('statusCode:', response && response.statusCode);
