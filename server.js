@@ -22,10 +22,20 @@ function mailContents(subject, text) {
     this.text = text; //本文(not HTML)
 }
 
+//Webページ死活監視結果の通知内容のオブジェクト
+function webPageAliveMonitoringDetail(isAlive, url, HTTPResCode) {
+    this.isAlive = isAlive; //正常応答ならtrue、異常応答ならfalse
+    this.url = url; //監視対象URL
+    this.HTTPResCode = HTTPResCode; //HTTPレスポンスステータスコード
+}
+
 const cron = require('node-cron');
 
 // cronによる自動実行
 cron.schedule('*/' + CRON_INTERVAL_MINUTE + ' * * * *', aliveMonitoringHandler());
+
+
+
 
 /**
  * @classdesc 死活監視処理を呼び出す関数
@@ -33,12 +43,12 @@ cron.schedule('*/' + CRON_INTERVAL_MINUTE + ' * * * *', aliveMonitoringHandler()
 function aliveMonitoringHandler() {
     generateLog("Entered " + arguments.callee.name);
 
-
+    //Webページ死活監視処理
     aliveMonitoredURL.forEach(url => {
         let ret;
         ret = webPageAliveMonitoring(url);
-        if (!ret) {
-            sendNoticeMails(url);
+        if (!ret.isAlive) {
+            sendNotice(ret);
         }
     });
 }
@@ -46,7 +56,7 @@ function aliveMonitoringHandler() {
 /**
  * @classdesc 指定されたURLのWebページに対し、死活監視を行う関数
  * @param {string} url 死活監視対象のWebページURL
- * @return {boolean, number} 正常判定ならtrue、異常判定ならfalse・HTTPレスポンスステータスコード
+ * @return {webPageAliveMonitoringDetail} 正常判定ならtrue、異常判定ならfalse/HTTPレスポンスステータスコード
  */
 function webPageAliveMonitoring(url) {
     generateLog("Entered " + arguments.callee.name);
@@ -54,26 +64,21 @@ function webPageAliveMonitoring(url) {
     let isAlive = false;
     let HTTPResCode = 500;
 
-
-
-    return {
-        isAlive: isAlive,
-        HTTPResCode: HTTPResCode,
-    };
+    return new webPageAliveMonitoringDetail(isAlive, url, HTTPResCode);
 }
 
 /**
- * @classdesc 通知メールを送信処理を開始する関数
- * @param {string} url 通知メールに載せる死活監視対象のURL
- * @param {Number} HTTPResCode 通知メールに載せる死活監視対象のWebページの応答コード
+ * @classdesc 通知を送信する関数
+ * @param {webPageAliveMonitoringDetail} detail 通知内容
+ * @return none
  */
-function sendNoticeMails(url, HTTPResCode) {
+function sendNotice(detail) {
+    const mailContent = generateNoticeMailText(detail);
 
-    const mailContent = generateNoticeMailText(url, HTTPResCode);
-
+    //通知メール送信処理
     send_mail_addrs.forEach(addr => {
         let ret;
-        ret = sendMail(url, mailContent);
+        ret = sendMail(addr, mailContent);
         if (!ret) {
             generateLog("sendMail() 送信エラー 宛先:" + addr);
         }
@@ -82,14 +87,13 @@ function sendNoticeMails(url, HTTPResCode) {
 
 /**
  * @classdesc 通知メールを作成する関数
- * @param {string} url 通知メールに載せる死活監視対象のURL
- * @param {Number} HTTPResCode 通知メールに載せる死活監視対象のWebページの応答コード
+ * @param {webPageAliveMonitoringDetail} detail 通知内容
  * @return {mailContents} 通知メールの文面
  */
-function generateNoticeMailText(url, HTTPResCode) {
+function generateNoticeMailText(detail) {
     let mailContent = new mailContents();
 
-    mailContent.subject = "<" + APP_NAME + "> Webページ異常応答警告！！！！！"
+    mailContent.subject = "<" + APP_NAME + "> Webページ異常応答！！！"
     mailContent.text =
         "以下のURLのwebページにおいて、異常応答を検出しました。\n" +
         "\n" +
@@ -119,6 +123,7 @@ function sendMail(destAddr, mailContent) {
 /**
  * @classdesc 本アプリにおけるログを出力する関数
  * @param {string} logstr 出力するログ文字列
+ * @return none
  */
 function generateLog(logstr) {
     console.log("<" + APP_NAME + ">" + logstr);
