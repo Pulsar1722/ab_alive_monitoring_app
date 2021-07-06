@@ -46,7 +46,7 @@ cron.schedule('*/' + CRON_INTERVAL_MINUTE + ' * * * *', aliveMonitoringHandler()
  * @classdesc 死活監視処理を呼び出す関数
  */
 function aliveMonitoringHandler() {
-    generateLog("Entered " + arguments.callee.name);
+    generateLog("Entered aliveMonitoringHandler()");
 
     //Webページ死活監視処理
     aliveMonitoredURL.forEach(url => {
@@ -64,7 +64,7 @@ function aliveMonitoringHandler() {
  * @return {webPageAliveMonitoringDetail} 通知内容
  */
 function webPageAliveMonitoring(url) {
-    generateLog("Entered " + arguments.callee.name + ". " + arguments);
+    generateLog("Entered webPageAliveMonitoring() " + arguments);
 
     let isAlive = false;
     let HTTPResCode = 0;
@@ -142,7 +142,7 @@ function generateNoticeMailText(detail) {
  * @return {boolean} 送信成功ならtrue、送信失敗ならfalse
  */
 function sendMail(destAddr, mailContent) {
-    generateLog("Entered " + arguments.callee.name + ". " + arguments);
+    generateLog("Entered sendMail() " + arguments);
 }
 
 
