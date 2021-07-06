@@ -37,7 +37,8 @@ const cron = require('node-cron');
 const request = require('request');
 
 // cronによる自動実行
-cron.schedule('*/' + CRON_INTERVAL_MINUTE + ' * * * *', aliveMonitoringHandler());
+//cron.schedule('*/' + CRON_INTERVAL_MINUTE + ' * * * *', aliveMonitoringHandler());
+cron.schedule('*/' + CRON_INTERVAL_MINUTE + ' * * * * * ', aliveMonitoringHandler());
 
 
 
