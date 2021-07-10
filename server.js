@@ -10,10 +10,11 @@ const aliveMonitoredURL = [ //死活監視対象URLのリスト
     "https://kusuri-miru.com/",
 ];
 const MAX_REQUEST_TRY_TIME = 3; //1回の死活監視における最大試行回数
+const MAX_REQURST_TIMEOUT_MS = 10 * 1000; //タイムアウト(単位:ms)
 
 //各種パラメータ(通知送信)
 const send_mail_addrs = [ //通知メールの宛先アドレスのリスト
-    "mebe889@kagi.be",
+    "mebe889@kagi.b",
 ];
 
 //共通パラメータ
@@ -43,10 +44,17 @@ if (require.main === module) {
 function main() {
     generateLog("AppVersion: " + APP_VERSION.major + "." + APP_VERSION.minor + "." + APP_VERSION.revision);
 
-    // cronによる周期実行
-    //cron.schedule('*/' + CRON_INTERVAL_MINUTE + ' * * * *', aliveMonitoringHandler());
+    try {
+        //アプリ起動直後は即座に1回実行
+        aliveMonitoringHandler();
 
-    aliveMonitoringHandler();
+        // cronによる周期実行
+        cron.schedule('*/' + CRON_INTERVAL_MINUTE + ' * * * *', () => {
+            aliveMonitoringHandler();
+        });
+    } catch (error) {
+        generateErrLog(error);
+    }
 }
 
 
@@ -72,24 +80,24 @@ function aliveMonitoringHandler() {
  * @return {webPageAliveMonitoringDetail} 通知内容
  */
 function webPageAliveMonitoring(url) {
-    generateLog("Entered webPageAliveMonitoring() " + arguments);
+    generateLog(`Entered webPageAliveMonitoring()`);
 
     let isAlive = false;
     let HTTPResCode = 0;
 
     const options = {
         url: url,
-        timeout: 30 * 1000, // 単位(秒)
+        timeout: MAX_REQURST_TIMEOUT_MS,
     }
 
     //最大「MAX_REQUEST_TRY_TIME」回試行
     for (let i = 0; i < MAX_REQUEST_TRY_TIME; i++) {
         //URLにGETリクエスト送信
-        request.get(options, function (error, response, body) {
+        request(options, (error, response, body) => {
             // レスポンスコードとHTMLを表示
-            generateLog('url:', url);
-            generateLog('statusCode:', response && response.statusCode);
-            generateLog('body:', body);
+            generateLog(`url: ${url}`);
+            generateLog(`statusCode: ${response} ${response.statusCode}`);
+            //generateLog(`body: ${ body }`);
             HTTPResCode = response.statusCode;
 
             //ステータスコードは200のみを正常とする
@@ -101,6 +109,7 @@ function webPageAliveMonitoring(url) {
             }
         });
 
+        //TBD request()処理が終了する前にここの処理に来てしまうのはどうすればよいのか
         if (isAlive) {
             //1回でも正常判定なら抜ける
             break;
@@ -108,6 +117,23 @@ function webPageAliveMonitoring(url) {
     }
 
     return new webPageAliveMonitoringDetail(isAlive, url, HTTPResCode);
+}
+
+/**
+ * @classdesc Promiseを返すリクエスト処理
+ * @param detail requestに渡すオプション
+ * @return requestの実行結果
+ */
+function requestPromise(options) {
+    return new Promise((resolve, reject) => {
+        request(options, (error, response, body) => {
+            if (error) {
+                reject("Promise: エラー");
+            } else {
+                resolve("Promise: 正常");
+            }
+        });
+    });
 }
 
 /**
@@ -123,7 +149,7 @@ function sendErrNotice(detail) {
         let ret;
         ret = sendMail(addr, mailContent);
         if (!ret) {
-            generateErrLog("sendMail() failed. dest:" + addr);
+            generateErrLog(`sendMail(${addr}) failed.`);
         }
     });
 }
@@ -159,7 +185,7 @@ function generateNoticeMailContents(detail) {
  * @return {boolean} 送信成功ならtrue、送信失敗ならfalse
  */
 async function sendMail(destAddr, mailContent) {
-    generateLog("Entered sendMail() " + arguments);
+    generateLog("Entered sendMail() ");
     let isOK = false;
 
     try {
