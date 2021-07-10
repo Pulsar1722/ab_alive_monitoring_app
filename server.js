@@ -7,7 +7,6 @@
 //各種パラメータ(Webページ死活監視)
 const CRON_INTERVAL_MINUTE = 10; //cronによる定期実行の間隔(分)
 const aliveMonitoredURL = [ //死活監視対象URLのリスト
-    "https://www.google.co.jp/webhp",
     "https://kusuri-miru.com/",
 ];
 const MAX_REQUEST_TRY_TIME = 3; //1回の死活監視における最大試行回数
@@ -19,11 +18,10 @@ const send_mail_addrs = [ //通知メールの宛先アドレスのリスト
 
 //共通パラメータ
 const APP_NAME = "alive_mon"; //本アプリ名
-
-//メールの文面のオブジェクト
-function mailContents(subject, text) {
-    this.subject = subject; //件名
-    this.text = text; //本文(not HTML)
+const APP_VERSION = class {
+    static major = "1";
+    static minor = "0";
+    static revision = "0";
 }
 
 //Webページ死活監視結果の通知内容のオブジェクト
@@ -37,11 +35,19 @@ function webPageAliveMonitoringDetail(isAlive, url, HTTPStatusCode) {
 const cron = require('node-cron');
 const request = require('request');
 
-// cronによる自動実行
-cron.schedule('*/' + CRON_INTERVAL_MINUTE + ' * * * *', aliveMonitoringHandler());
-//cron.schedule('* * * * * *', aliveMonitoringHandler()); //毎秒実行
+//このファイルがメインモジュールかの確認に用いるらしい
+if (require.main === module) {
+    main();
+}
 
+function main() {
+    generateLog("AppVersion: " + APP_VERSION.major + "." + APP_VERSION.minor + "." + APP_VERSION.revision);
 
+    // cronによる周期実行
+    //cron.schedule('*/' + CRON_INTERVAL_MINUTE + ' * * * *', aliveMonitoringHandler());
+
+    aliveMonitoringHandler();
+}
 
 
 /**
@@ -110,7 +116,7 @@ function webPageAliveMonitoring(url) {
  * @return none
  */
 function sendErrNotice(detail) {
-    const mailContent = generateNoticeMailText(detail);
+    const mailContent = generateNoticeMailContents(detail);
 
     //通知メール送信処理
     send_mail_addrs.forEach(addr => {
@@ -125,19 +131,23 @@ function sendErrNotice(detail) {
 /**
  * @classdesc 通知メールを作成する関数
  * @param {webPageAliveMonitoringDetail} detail 通知内容
- * @return {mailContents} 通知メールの文面
+ * @return {mailContent} 通知メール送信用オブジェクト(to未指定)
  */
-function generateNoticeMailText(detail) {
-    let mailContent = new mailContents();
+function generateNoticeMailContents(detail) {
 
-    mailContent.subject = "<" + APP_NAME + "> Webページ異常応答！！！"
-    mailContent.text =
-        "以下のURLのwebページにおいて、異常応答を検出しました。\n" +
-        "\n" +
-        "URL: " + detail.url + "\n" +
-        "HTTPステータスコード: " + detail.HTTPResCode + "\n" +
-        "\n" +
-        "管理者は、必要に応じて対象Webページのサーバ再起動等を実施してください。\n"
+    const mailContent = require('gmail-send')({
+        user: 'ab.robomail@gmail.com',
+        pass: 'X2wvCNRH',
+        //to: //後で指定する
+        subject: "<" + APP_NAME + "> Webページ異常応答！！！",
+        text:
+            "以下のURLのwebページにおいて、異常応答を検出しました。\n" +
+            "\n" +
+            "URL: " + detail.url + "\n" +
+            "HTTPステータスコード: " + detail.HTTPResCode + "\n" +
+            "\n" +
+            "管理者は、必要に応じて対象Webページのサーバ再起動等を実施してください。\n",
+    });
 
     return mailContent;
 }
@@ -148,8 +158,23 @@ function generateNoticeMailText(detail) {
  * @param {mailContents} mailContent メールの文面
  * @return {boolean} 送信成功ならtrue、送信失敗ならfalse
  */
-function sendMail(destAddr, mailContent) {
+async function sendMail(destAddr, mailContent) {
     generateLog("Entered sendMail() " + arguments);
+    let isOK = false;
+
+    try {
+        const { result, fullresult } = await mailContent(
+            {
+                to: destAddr, //ここでtoが指定されるのをトリガーに、メールを送信する
+            }
+        )
+        generateLog("gmail-send result: " + result);
+        isOK = true;
+    } catch (error) {
+        generateErrLog("gmail-send ERROR: " + error);
+    }
+
+    return isOK;
 }
 
 

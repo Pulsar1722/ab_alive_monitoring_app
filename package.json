@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "gmail-send": "^1.8.10",
     "node-cron": "^3.0.0",
     "request": "^2.88.2"
   }
