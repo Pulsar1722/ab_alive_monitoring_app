@@ -1,7 +1,8 @@
 {
   "dependencies": {
+    "axios": "^0.21.1",
+    "date-utils": "^1.2.21",
     "gmail-send": "^1.8.10",
-    "node-cron": "^3.0.0",
-    "request": "^2.88.2"
+    "node-cron": "^3.0.0"
   }
 }
