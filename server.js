@@ -13,9 +13,13 @@ const MAX_REQUEST_TRY_TIMES = 3; //1回の死活監視における最大リク�
 const MAX_REQURST_TIMEOUT_MS = 10 * 1000; //タイムアウト(単位:ms)
 
 //各種パラメータ(通知送信)
-const send_mail_addrs = [ //通知メールの宛先アドレスのリスト
+const dest_mail_addrs = [ //通知メールの宛先アドレスのリスト
     `mebe889@kagi.be`,
 ];
+const src_mail_info = {
+    addr: `ab.robomail@gmail.com`,
+    pass: `X2wvCNRH`,
+}
 
 //共通パラメータ
 const APP_NAME = `alive_mon`; //本アプリ名
@@ -139,7 +143,7 @@ function sendErrNotice(detail) {
     const mailContent = generateNoticeMailContents(detail);
 
     //通知メール送信処理
-    send_mail_addrs.forEach(addr => {
+    dest_mail_addrs.forEach(addr => {
         let ret;
         ret = sendMail(addr, mailContent);
         if (!ret) {
@@ -156,8 +160,8 @@ function sendErrNotice(detail) {
 function generateNoticeMailContents(detail) {
 
     const mailContent = require('gmail-send')({
-        user: 'ab.robomail@gmail.com',
-        pass: 'X2wvCNRH',
+        user: src_mail_info.addr,
+        pass: src_mail_info.pass,
         //to: //後で指定する
         subject: `< ${APP_NAME}> Webページ異常応答！！！`,
         text:
