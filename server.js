@@ -15,6 +15,7 @@ const MAX_REQURST_TIMEOUT_MS = 10 * 1000; //タイムアウト(単位:ms)
 //各種パラメータ(通知送信)
 const dest_mail_addrs = [ //通知メールの宛先アドレスのリスト
     `mebe889@kagi.be`,
+    `rgstsvc@gmail.com`,
 ];
 const src_mail_info = { //送信元メールアドレス情報
     addr: `ab.robomail@gmail.com`,
