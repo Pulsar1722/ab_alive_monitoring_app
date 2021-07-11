@@ -66,7 +66,7 @@ function main() {
  * @classdesc 死活監視処理を呼び出す関数
  */
 function aliveMonitoringHandler() {
-    generateLog(`Entered aliveMonitoringHandler(${JSON.stringify(arguments)})`);
+    generateLog(`Entered aliveMonitoringHandler()`);
 
     //Webページ死活監視処理
     aliveMonitoredURL.forEach(async (url) => {
@@ -123,6 +123,7 @@ async function webPageAliveMonitoring(url) {
 
         if (isAlive) {
             //1回でも正常判定なら抜ける
+            generateLog(`${url} is OK.`);
             break;
         }
     }
