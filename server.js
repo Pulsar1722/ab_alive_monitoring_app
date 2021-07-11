@@ -10,7 +10,6 @@ const aliveMonitoredURL = [ //死活監視対象URLのリスト
     `https://kusuri-miru.com/`,
 ];
 const MAX_REQUEST_TRY_TIMES = 3; //1回の死活監視における最大リクエスト試行回数
-const REQUEST_TRY_INTERVAL_MS = 3 * 1000; //リクエスト試行のインターバル(単位:ms)
 const MAX_REQURST_TIMEOUT_MS = 10 * 1000; //タイムアウト(単位:ms)
 
 //各種パラメータ(通知送信)
