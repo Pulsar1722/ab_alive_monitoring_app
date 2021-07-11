@@ -20,10 +20,10 @@ const send_mail_addrs = [ //通知メールの宛先アドレスのリスト
 
 //共通パラメータ
 const APP_NAME = `alive_mon`; //本アプリ名
-const APP_VERSION = class {
-    static major = `1`;
-    static minor = `0`;
-    static revision = `0`;
+const APP_VERSION = {
+    major: `1`,
+    minor: `0`,
+    revision: `0`,
 }
 
 //Webページ死活監視結果の通知内容のオブジェクト
