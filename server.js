@@ -6,18 +6,18 @@
 
 //各種パラメータ(Webページ死活監視)
 const CRON_EVERY_MINUTE = 10; //cronによる定期実行の時間指定(分)
-const aliveMonitoredURL = [ //死活監視対象URLのリスト
+const ALIVE_MONITORED_URLs = [ //死活監視対象URLのリスト
     `https://kusuri-miru.com/`,
 ];
 const MAX_REQUEST_TRY_TIMES = 3; //1回の死活監視における最大リクエスト試行回数
 const MAX_REQURST_TIMEOUT_MS = 10 * 1000; //タイムアウト(単位:ms)
 
 //各種パラメータ(通知送信)
-const dest_mail_addrs = [ //通知メールの宛先アドレスのリスト
+const DEST_MAIL_ADDRs = [ //通知メールの宛先アドレスのリスト
     `mebe889@kagi.be`,
     `rgstsvc@gmail.com`,
 ];
-const src_mail_info = { //送信元メールアドレス情報
+const SRC_MAIL_INFO = { //送信元メールアドレス情報
     addr: `ab.robomail@gmail.com`,
     pass: `X2wvCNRH`,
 }
@@ -26,15 +26,17 @@ const src_mail_info = { //送信元メールアドレス情報
 const APP_NAME = `alive_mon`; //本アプリ名
 const APP_VERSION = {
     major: `1`,
-    minor: `0`,
+    minor: `1`,
     revision: `0`,
 }
 
 //Webページ死活監視結果の通知内容のオブジェクト
-function webPageAliveMonitoringDetail(isAlive, url, HTTPStatusCode) {
+function webPageAliveMonitoringDetail(isAlive, url, HTTPStatusCode, elapsedTime_ms, error_msg) {
     this.isAlive = isAlive; //正常応答ならtrue、異常応答ならfalse
     this.url = url; //監視対象URL
     this.HTTPResCode = HTTPStatusCode; //HTTPステータスコード
+    this.elapsedTime_ms = elapsedTime_ms; //応答時間
+    this.error_msg = error_msg; //エラーメッセージ
 }
 
 //使用モジュール
@@ -73,7 +75,7 @@ function aliveMonitoringHandler() {
     generateLog(`Entered aliveMonitoringHandler()`);
 
     //Webページ死活監視処理
-    aliveMonitoredURL.forEach(async (url) => {
+    ALIVE_MONITORED_URLs.forEach(async (url) => {
         let ret;
         ret = await webPageAliveMonitoring(url);
         if (!ret.isAlive) {
@@ -93,6 +95,9 @@ async function webPageAliveMonitoring(url) {
     let isAlive = false;
     let HTTPResCode = "N/A";
     let res = null;
+    let elapsedTime_ms = 0;
+    let error_msg = "";
+    let startTime = 0;
 
     const config = {
         url: url,
@@ -103,6 +108,8 @@ async function webPageAliveMonitoring(url) {
     //最大「MAX_REQUEST_TRY_TIME」回試行
     for (let i = 0; i < MAX_REQUEST_TRY_TIMES; i++) {
         try {
+            startTime = new Date(); //応答時間計測開始
+
             //リクエストの送信とレスポンスの受信(同期的)
             res = await sendRequestSync(config);
             HTTPResCode = res.status;
@@ -115,15 +122,14 @@ async function webPageAliveMonitoring(url) {
                 isAlive = true;
             }
         } catch (error) {
-            HTTPResCode = "";
             generateErrLog(error);
-
-            //現状の仕様では、HTTPResCodeにエラーメッセージも入れちゃう
+            error_msg = error;
             if (error.response) {
                 HTTPResCode = error.response.status;
             }
-            HTTPResCode += `\n${error}`
         }
+        elapsedTime_ms = new Date() - startTime;  //応答時間計測終了
+        generateLog(`Respose time: ${elapsedTime_ms}ms)`);
 
         if (isAlive) {
             //1回でも正常判定なら抜ける
@@ -132,7 +138,7 @@ async function webPageAliveMonitoring(url) {
         }
     }
 
-    return new webPageAliveMonitoringDetail(isAlive, url, HTTPResCode);
+    return new webPageAliveMonitoringDetail(isAlive, url, HTTPResCode, elapsedTime_ms, error_msg);
 }
 
 /**
@@ -144,7 +150,7 @@ function sendErrNotice(detail) {
     const mailContent = generateNoticeMailContents(detail);
 
     //通知メール送信処理
-    dest_mail_addrs.forEach(addr => {
+    DEST_MAIL_ADDRs.forEach(addr => {
         let ret;
         ret = sendMail(addr, mailContent);
         if (!ret) {
@@ -161,15 +167,16 @@ function sendErrNotice(detail) {
 function generateNoticeMailContents(detail) {
 
     const mailContent = require('gmail-send')({
-        user: src_mail_info.addr,
-        pass: src_mail_info.pass,
+        user: SRC_MAIL_INFO.addr,
+        pass: SRC_MAIL_INFO.pass,
         //to: //後で指定する
         subject: `< ${APP_NAME}> Webページ異常応答！！！`,
         text:
             `以下のURLのwebページにおいて、異常応答を検出しました。\n` +
             `\n` +
-            `URL: ${detail.url} \n` +
-            `HTTPステータスコード: ${detail.HTTPResCode} \n` +
+            `URL: ${detail.url}\n` +
+            `HTTPステータスコード: ${detail.HTTPResCode}\n` +
+            `${detail.error_msg}\n` +
             `\n` +
             `管理者は、必要に応じて対象Webページのサーバ再起動等を実施してください。\n` +
             `\n` +
