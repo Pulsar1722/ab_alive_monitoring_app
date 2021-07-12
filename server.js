@@ -27,7 +27,7 @@ const APP_NAME = `alive_mon`; //本アプリ名
 const APP_VERSION = {
     major: `1`,
     minor: `1`,
-    revision: `0`,
+    revision: `1`,
 }
 
 //Webページ死活監視結果の通知内容のオブジェクト
@@ -129,7 +129,7 @@ async function webPageAliveMonitoring(url) {
             }
         }
         elapsedTime_ms = new Date() - startTime;  //応答時間計測終了
-        generateLog(`Respose time: ${elapsedTime_ms}ms)`);
+        generateLog(`Respose time: ${elapsedTime_ms}ms`);
 
         if (isAlive) {
             //1回でも正常判定なら抜ける
