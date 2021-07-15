@@ -4,30 +4,19 @@
 
 'use strict';
 
-//各種パラメータ(Webページ死活監視)
-const CRON_EVERY_MINUTE = 10; //cronによる定期実行の時間指定(分)
-const ALIVE_MONITORED_URLs = [ //死活監視対象URLのリスト
-    `https://kusuri-miru.com/`,
-];
+//各種パラメータ
+const CRON_EVERY_MINUTE = 1; //cronによる定期実行の時間指定(分)
 const MAX_REQUEST_TRY_TIMES = 3; //1回の死活監視における最大リクエスト試行回数
 const MAX_REQURST_TIMEOUT_MS = 10 * 1000; //タイムアウト(単位:ms)
-
-//各種パラメータ(通知送信)
-const DEST_MAIL_ADDRs = [ //通知メールの宛先アドレスのリスト
-    `mebe889@kagi.be`,
-    `rgstsvc@gmail.com`,
-];
-const SRC_MAIL_INFO = { //送信元メールアドレス情報
-    addr: `ab.robomail@gmail.com`,
-    pass: `X2wvCNRH`,
-}
+const CONFIG_JSON_FILENAME = "./alive_mon.json" //設定ファイルの(server.jsから見た)相対パス
+let confObj = null; //設定ファイルから読みだした値のオブジェクト
 
 //共通パラメータ
 const APP_NAME = `alive_mon`; //本アプリ名
 const APP_VERSION = {
     major: `1`,
-    minor: `1`,
-    revision: `1`,
+    minor: `2`,
+    revision: `0`,
 }
 
 //Webページ死活監視結果の通知内容のオブジェクト
@@ -72,10 +61,17 @@ function main() {
  * @classdesc 死活監視処理を呼び出す関数
  */
 function aliveMonitoringHandler() {
-    generateLog(`Entered aliveMonitoringHandler()`);
+    //generateLog(`Entered aliveMonitoringHandler()`);
+    /** 設定ファイル読み込み */
+    confObj = readJsonConfigFile(CONFIG_JSON_FILENAME);
+    if (confObj === null) {
+        //設定ファイルを正常に読み出せなかった場合
+        generateErrLog(`readJsonConfigFile(${CONFIG_JSON_FILENAME}) failed.`);
+        return;
+    }
 
     //Webページ死活監視処理
-    ALIVE_MONITORED_URLs.forEach(async (url) => {
+    confObj.alive_monitored_URLs.forEach(async (url) => {
         let ret;
         ret = await webPageAliveMonitoring(url);
         if (!ret.isAlive) {
@@ -150,7 +146,7 @@ function sendErrNotice(detail) {
     const mailContent = generateNoticeMailContents(detail);
 
     //通知メール送信処理
-    DEST_MAIL_ADDRs.forEach(addr => {
+    confObj.dest_mail_addrs.forEach(addr => {
         let ret;
         ret = sendMail(addr, mailContent);
         if (!ret) {
@@ -167,8 +163,8 @@ function sendErrNotice(detail) {
 function generateNoticeMailContents(detail) {
 
     const mailContent = require('gmail-send')({
-        user: SRC_MAIL_INFO.addr,
-        pass: SRC_MAIL_INFO.pass,
+        user: confObj.src_mail_info.addr,
+        pass: confObj.src_mail_info.pass,
         //to: //後で指定する
         subject: `< ${APP_NAME}> Webページ異常応答！！！`,
         text:
@@ -244,4 +240,51 @@ function generateErrLog(logstr) {
  */
 async function sendRequestSync(config) {
     return await axios(config);
+}
+
+/**
+ * @classdesc 設定ファイル(JSON形式)を読み出し、各種設定値を取得する。設定値が正常に読み出せたか(足りない設定値はないか)
+ * @param {string} jsonFilename JSON形式の設定ファイルパス
+ * @return 正常に設定ファイルを読み出せた場合はJSONオブジェクト。そうでない場合はnull
+ */
+function readJsonConfigFile(jsonFilePath) {
+    let jsonObj = null;
+    let undefinedParams = [];
+
+    try {
+        //ファイルパスが異常なら、ここでエラーをthrowする
+        jsonObj = require(jsonFilePath);
+        delete require.cache[require.resolve(jsonFilePath)]; //ここでrequireのキャッシュを削除し、次回以降も再度ファイルを読み出すようにする
+
+        /**以下、設定値の確認 */
+        if (jsonObj.alive_monitored_URLs === undefined) {
+            undefinedParams.push("alive_monitored_URLs");
+        }
+
+        if (jsonObj.dest_mail_addrs === undefined) {
+            undefinedParams.push("dest_mail_addrs");
+        }
+
+        if (jsonObj.src_mail_info === undefined) {
+            undefinedParams.push("src_mail_info");
+        } else {
+            //サブパラメータについても確認
+            if (jsonObj.src_mail_info.addr === undefined) {
+                undefinedParams.push("src_mail_info.addr");
+            }
+            if (jsonObj.src_mail_info.pass === undefined) {
+                undefinedParams.push("src_mail_info.pass");
+            }
+        }
+
+        // 1個以上のパラメータが設定されていなければエラー扱い
+        if (undefinedParams.length !== 0) {
+            throw `${undefinedParams} is undefined.`
+        }
+    } catch (error) {
+        generateErrLog(error);
+        jsonObj = null;
+    }
+
+    return jsonObj;
 }

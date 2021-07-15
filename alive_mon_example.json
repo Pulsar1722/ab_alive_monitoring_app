@@ -1,0 +1,14 @@
+{
+    "alive_monitored_URLs": [
+        "https://www.google.co.jp/",
+        "https://www.amazon.co.jp/"
+    ],
+    "dest_mail_addrs": [
+        "mailaddr1@example.com",
+        "mailaddr2@hogefuga.co.jp"
+    ],
+    "src_mail_info": {
+        "addr": "srcmailaddr@gmail.com",
+        "pass": "pass1234"
+    }
+}
