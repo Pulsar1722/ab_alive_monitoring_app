@@ -5,7 +5,7 @@
 'use strict';
 
 //各種パラメータ
-const CRON_EVERY_MINUTE = 10; //cronによる定期実行の時間指定(分)
+const CRON_EVERY_MINUTE = 30; //cronによる定期実行の時間指定(分)
 const MAX_REQUEST_TRY_TIMES = 3; //1回の死活監視における最大リクエスト試行回数
 const MAX_REQURST_TIMEOUT_MS = 10 * 1000; //タイムアウト(単位:ms)
 const CONFIG_JSON_FILENAME = "./alive_mon.json" //設定ファイルの(server.jsから見た)相対パス
@@ -16,7 +16,7 @@ const APP_NAME = `alive_mon`; //本アプリ名
 const APP_VERSION = {
     major: `1`,
     minor: `2`,
-    revision: `0`,
+    revision: `1`,
 }
 
 //Webページ死活監視結果の通知内容のオブジェクト
