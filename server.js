@@ -5,12 +5,14 @@
 'use strict';
 
 //各種パラメータ
-const CRON_EVERY_MINUTE = 20; //cronによる定期実行の時間指定(分)
 const MAX_REQUEST_TRY_TIMES = 3; //1回の死活監視における最大リクエスト試行回数
-const ALIVE_MON_TRY_INTERVAL_MS = 1 * 1000 //死活監視通信のインターバル(単位:ms)
+const ALIVE_MON_TRY_INTERVAL_MS = 1 * 1000; //死活監視通信のインターバル(単位:ms)
 const MAX_REQURST_TIMEOUT_MS = 10 * 1000; //1回の死活監視通信のタイムアウト(単位:ms)
-const CONFIG_JSON_FILENAME = "./alive_mon.json" //設定ファイルの(server.jsから見た)相対パス
+const CONFIG_JSON_FILENAME = "./alive_mon.json"; //設定ファイルの(server.jsから見た)相対パス
 let confObj = null; //設定ファイルから読みだした値のオブジェクト
+
+const CRON_FORMAT_WEBPAGE_ALIVE_MONITORING = `*/20 * * * *`; //Webページ死活監視処理のCRONフォーマット(20分おき)
+const CRON_FORMAT_REGULARY_NOTICE = `0 3 1 * *`; //定期連絡処理のCRONフォーマット(毎月1日 UTC 03:00)
 
 //共通パラメータ
 const APP_NAME = `alive_mon`; //本アプリ名
@@ -50,12 +52,17 @@ function main() {
     printLog(`AppVersion: ${APP_VERSION.major}.${APP_VERSION.minor}.${APP_VERSION.revision}`);
 
     try {
-        //アプリ起動直後は即座に1回実行
+        //アプリ起動直後は死活監視を即座に1回実行
         aliveMonitoringHandler();
 
-        // cronによる周期実行
-        cron.schedule(`*/${CRON_EVERY_MINUTE} * * * *`, () => {
+        // 死活監視処理の周期実行
+        cron.schedule(CRON_FORMAT_WEBPAGE_ALIVE_MONITORING, () => {
             aliveMonitoringHandler();
+        });
+
+        // 死活監視アプリが正常に動作していることを通知する処理の周期実行
+        cron.schedule(CRON_FORMAT_REGULARY_NOTICE, () => {
+            sendRegularyNoticeHandler();
         });
     } catch (error) {
         printErrLog(JSON.stringify(error))
@@ -157,7 +164,7 @@ async function webPageAliveMonitoring(url) {
  * @return none
  */
 function sendErrNotice(detail) {
-    const mailContent = generateNoticeMailContents(detail);
+    const mailContent = generateErrNoticeMailContents(detail);
 
     //通知メール送信処理
     confObj.dest_mail_addrs.forEach(addr => {
@@ -170,17 +177,17 @@ function sendErrNotice(detail) {
 }
 
 /**
- * @classdesc 通知メールを作成する関数
+ * @classdesc Webページ応答異常時の通知メールを作成する関数
  * @param {webPageAliveMonitoringDetail} detail 通知内容
  * @return {mailContent} 通知メール送信用オブジェクト(to未指定)
  */
-function generateNoticeMailContents(detail) {
+function generateErrNoticeMailContents(detail) {
 
     const mailContent = require('gmail-send')({
         user: confObj.src_mail_info.addr,
         pass: confObj.src_mail_info.pass,
         //to: //後で指定する
-        subject: `< ${APP_NAME}> Webページ異常応答！！！`,
+        subject: `<${APP_NAME}> Webページ異常応答！！！`,
         text:
             `以下のURLのwebページにおいて、異常応答を検出しました。\n` +
             `\n` +
@@ -189,6 +196,48 @@ function generateNoticeMailContents(detail) {
             `${detail.error_msg}\n` +
             `\n` +
             `管理者は、必要に応じて対象Webページのサーバ再起動等を実施してください。\n` +
+            `\n` +
+            `\n` +
+            `AppVersion: ${APP_VERSION.major}.${APP_VERSION.minor}.${APP_VERSION.revision} `,
+
+    });
+
+    return mailContent;
+}
+
+/**
+ * @classdesc 死活監視アプリ稼働状況の定期連絡を実施する関数
+ * @param {webPageAliveMonitoringDetail} detail 通知内容
+ * @return none
+ */
+function sendRegularyNoticeHandler() {
+    const mailContent = generateRegularyNoticeMailContents();
+
+    //通知メール送信処理
+    confObj.dest_mail_addrs.forEach(addr => {
+        let ret;
+        ret = sendMail(addr, mailContent);
+        if (!ret) {
+            printErrLog(`sendMail(${addr}) failed.`);
+        }
+    });
+}
+
+/**
+ * @classdesc 定期連絡用通知メールを作成する関数
+ * @param none
+ * @return {mailContent} 通知メール送信用オブジェクト(to未指定)
+ */
+function generateRegularyNoticeMailContents() {
+
+    const mailContent = require('gmail-send')({
+        user: confObj.src_mail_info.addr,
+        pass: confObj.src_mail_info.pass,
+        //to: //後で指定する
+        subject: `<${APP_NAME}> 死活監視状況の定期連絡`,
+        text:
+            `本メールは、死活監視アプリが正常に動作していることを確認するための定期連絡用メールです。\n` +
+            `本メールが届くことは正常であり、異常動作ではありません。\n` +
             `\n` +
             `\n` +
             `AppVersion: ${APP_VERSION.major}.${APP_VERSION.minor}.${APP_VERSION.revision} `,
