@@ -213,6 +213,18 @@ function generateErrNoticeMailContents(detail) {
 function sendRegularyNoticeHandler() {
     const mailContent = generateRegularyNoticeMailContents();
 
+    //タイムスタンプ出力
+    let recordDateTime = DateTime.now().setZone('Asia/Tokyo');
+    printLog(recordDateTime.toISO() + ` sendRegularyNoticeHandler()`);
+
+    /** 設定ファイル読み込み */
+    confObj = readJsonConfigFile(CONFIG_JSON_FILENAME);
+    if (confObj === null) {
+        //設定ファイルを正常に読み出せなかった場合
+        printErrLog(`readJsonConfigFile(${CONFIG_JSON_FILENAME}) failed.`);
+        return;
+    }
+
     //通知メール送信処理
     confObj.dest_mail_addrs.forEach(addr => {
         let ret;
