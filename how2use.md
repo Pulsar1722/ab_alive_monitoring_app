@@ -35,14 +35,6 @@
       cd ~/ab_alive_monitoring_app/
       ```
 
-    * 以下のコマンドを入力し、アプリ実行時のパッケージ参照先をソースコードディレクトリにできるnode_modulesディレクトリに設定する
-  
-      ```
-      export NODE_PATH=`npm root`
-      echo $NODE_PATH
-       出力メッセージ> {ここにユーザのホームディレクトリ}/ab_alive_monitoring_app/node_modules
-      ```
-
     * パッケージのインストール
 
       ```
